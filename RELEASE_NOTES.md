@@ -37,3 +37,10 @@ Replace the previous JAR while the server is stopped. Configuration and
 `retrogen-state-v1.json` remain compatible with version 1.0.0.
 
 Back up the world and use `dryRun` before enabling a new migration pass.
+
+## Downloads
+
+- [Fabric server mod JAR](https://github.com/0n113/retrogen/raw/v1.1.0/dist/v1.1.0/retrogen-1.1.0.jar)
+- [Sources JAR](https://github.com/0n113/retrogen/raw/v1.1.0/dist/v1.1.0/retrogen-1.1.0-sources.jar)
+- [Complete source archive](https://github.com/0n113/retrogen/raw/v1.1.0/dist/v1.1.0/retrogen-fabric-26.2-source.zip)
+- [SHA-256 checksums](https://github.com/0n113/retrogen/raw/v1.1.0/dist/v1.1.0/SHA256SUMS)
