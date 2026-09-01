@@ -43,6 +43,13 @@ changes.
   waiting for the next chunk load. No Retrogen error or Mixin failure in the
   server log. Clean shutdown.
 
+## Downloads
+
+- [Fabric server mod JAR](https://github.com/0n113/retrogen/raw/v1.1.1/dist/v1.1.1/retrogen-1.1.1.jar)
+- [Sources JAR](https://github.com/0n113/retrogen/raw/v1.1.1/dist/v1.1.1/retrogen-1.1.1-sources.jar)
+- [Complete source archive](https://github.com/0n113/retrogen/raw/v1.1.1/dist/v1.1.1/retrogen-fabric-26.2-source.zip)
+- [SHA-256 checksums](https://github.com/0n113/retrogen/raw/v1.1.1/dist/v1.1.1/SHA256SUMS)
+
 ## Known limitations
 
 See `REVIEW-2026-09-01.md` for the full risk register. The most operationally
