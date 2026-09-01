@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "enabled": false,
+  "dryRun": false,
+  "chunksPerTick": 1,
+  "saveIntervalTicks": 100,
+  "requireLoaded3x3": true,
+  "passes": [
+    {
+      "id": "example_ores_v1",
+      "enabled": true,
+      "dimensions": [
+        "minecraft:overworld"
+      ],
+      "includePlacedFeatures": [
+        "examplemod:*"
+      ],
+      "excludePlacedFeatures": [],
+      "markNewChunksComplete": true,
+      "retryFailed": false
+    }
+  ]
+}
