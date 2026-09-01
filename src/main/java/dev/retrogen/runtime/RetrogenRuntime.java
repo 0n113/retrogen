@@ -149,6 +149,10 @@ public final class RetrogenRuntime {
 		return config == null ? java.util.List.of() : java.util.List.copyOf(config.passes);
 	}
 
+	public static boolean hasConfiguredPass(String passId) {
+		return findPass(passId) != null;
+	}
+
 	public static CommandResult retry(ServerLevel level, String passId, long key) {
 		RetrogenConfig.Pass pass = findPass(passId);
 		if (config == null || state == null) {

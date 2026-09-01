@@ -40,4 +40,30 @@ class RetrogenStateStoreTest {
 		assertFalse(cleared.isComplete(DIMENSION, PASS, CHUNK));
 		assertEquals(PassSummary.EMPTY, cleared.summary(DIMENSION, PASS));
 	}
+
+	@Test
+	void failedMarkerPersistsUntilExplicitlyCleared(@TempDir Path world) {
+		RetrogenStateStore store = RetrogenStateStore.load(world);
+		store.markFailed(DIMENSION, PASS, CHUNK, new IllegalStateException("synthetic failure"));
+		store.saveIfDirty();
+
+		RetrogenStateStore reloaded = RetrogenStateStore.load(world);
+		assertTrue(reloaded.hasFailed(DIMENSION, PASS, CHUNK));
+		assertEquals(1, reloaded.summary(DIMENSION, PASS).failed());
+		assertTrue(reloaded.clearBlocked(DIMENSION, PASS, CHUNK));
+		assertFalse(reloaded.hasFailed(DIMENSION, PASS, CHUNK));
+	}
+
+	@Test
+	void inProgressMarkerSurvivesRestartForManualRecovery(@TempDir Path world) {
+		RetrogenStateStore store = RetrogenStateStore.load(world);
+		store.markInProgress(DIMENSION, PASS, CHUNK);
+		store.saveIfDirty();
+
+		RetrogenStateStore reloaded = RetrogenStateStore.load(world);
+		assertTrue(reloaded.isInProgress(DIMENSION, PASS, CHUNK));
+		assertEquals(1, reloaded.summary(DIMENSION, PASS).inProgress());
+		assertTrue(reloaded.clearBlocked(DIMENSION, PASS, CHUNK));
+		assertFalse(reloaded.isInProgress(DIMENSION, PASS, CHUNK));
+	}
 }

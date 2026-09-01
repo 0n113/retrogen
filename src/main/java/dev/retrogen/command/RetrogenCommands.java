@@ -82,7 +82,12 @@ public final class RetrogenCommands {
 	}
 
 	private static int statusOne(CommandContext<CommandSourceStack> context) {
-		sendStatus(context.getSource(), StringArgumentType.getString(context, "pass"));
+		String pass = StringArgumentType.getString(context, "pass");
+		if (!RetrogenRuntime.hasConfiguredPass(pass)) {
+			context.getSource().sendFailure(Component.literal("Unknown Retrogen pass: " + pass));
+			return 0;
+		}
+		sendStatus(context.getSource(), pass);
 		return 1;
 	}
 
