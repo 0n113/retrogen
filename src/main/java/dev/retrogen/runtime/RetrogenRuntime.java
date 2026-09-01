@@ -31,13 +31,13 @@ public final class RetrogenRuntime {
 	}
 
 	public static void registerEvents() {
-		ServerLifecycleEvents.SERVER_STARTED.register(RetrogenRuntime::onServerStarted);
+		ServerLifecycleEvents.SERVER_STARTING.register(RetrogenRuntime::onServerStarting);
 		ServerLifecycleEvents.SERVER_STOPPING.register(RetrogenRuntime::onServerStopping);
 		ServerChunkEvents.CHUNK_LOAD.register(RetrogenRuntime::onChunkLoad);
 		ServerTickEvents.END_LEVEL_TICK.register(RetrogenRuntime::onEndWorldTick);
 	}
 
-	private static void onServerStarted(MinecraftServer server) {
+	private static void onServerStarting(MinecraftServer server) {
 		config = ConfigManager.load();
 		state = RetrogenStateStore.load(server.getWorldPath(LevelResource.ROOT));
 		QUEUES.clear();
@@ -102,15 +102,17 @@ public final class RetrogenRuntime {
 				RetrogenMod.LOGGER.info("[dry-run] Would execute pass {} for {} chunk {}", pass.id, dimension, pos);
 				continue;
 			}
-			state.markInProgress(dimension, pass.id, key);
-			// Persist before the first world mutation. A crash leaves a manual-review
-			// marker instead of silently running a potentially partial pass twice.
-			state.saveIfDirty();
-			try (RetrogenContext ignored = RetrogenContext.open(pass)) {
-				level.getChunkSource().getGenerator().applyBiomeDecoration(level, chunk, level.structureManager());
+			try {
+				state.markInProgress(dimension, pass.id, key);
+				// Fail closed before the first world mutation. A crash or write failure
+				// must never allow an untracked generation pass.
+				state.saveIfDirtyOrThrow();
+				try (RetrogenContext ignored = RetrogenContext.open(pass)) {
+					level.getChunkSource().getGenerator().applyBiomeDecoration(level, chunk, level.structureManager());
+				}
 				state.markComplete(dimension, pass.id, key);
 				RetrogenMod.LOGGER.debug("Completed pass {} for {} chunk {}", pass.id, dimension, pos);
-			} catch (Throwable error) {
+			} catch (Exception error) {
 				state.markFailed(dimension, pass.id, key, error);
 				RetrogenMod.LOGGER.error("Retrogen pass {} failed for {} chunk {}", pass.id, dimension, pos, error);
 			}
@@ -169,9 +171,20 @@ public final class RetrogenRuntime {
 			return CommandResult.ALREADY_COMPLETE;
 		}
 		state.clearBlocked(dimension, pass.id, key);
-		state.saveIfDirty();
+		try {
+			state.saveIfDirtyOrThrow();
+		} catch (IllegalStateException error) {
+			RetrogenMod.LOGGER.error("Cannot persist retry state for pass {} in {} chunk {}", pass.id, dimension, ChunkPos.unpack(key), error);
+			return CommandResult.PERSISTENCE_FAILED;
+		}
+		if (!config.enabled) {
+			return CommandResult.MOD_DISABLED;
+		}
+		if (level.getChunkSource().getChunkNow(ChunkPos.getX(key), ChunkPos.getZ(key)) == null) {
+			return CommandResult.WAITING_FOR_CHUNK_LOAD;
+		}
 		QUEUES.computeIfAbsent(dimension, ignored -> new WorkQueue()).offer(key);
-		return config.enabled ? CommandResult.QUEUED : CommandResult.MOD_DISABLED;
+		return CommandResult.QUEUED;
 	}
 
 	public static CommandResult clear(ServerLevel level, String passId, long key) {
@@ -186,8 +199,16 @@ public final class RetrogenRuntime {
 		if (!state.clearAll(dimension, pass.id, key)) {
 			return CommandResult.NOTHING_TO_CLEAR;
 		}
-		state.saveIfDirty();
+		try {
+			state.saveIfDirtyOrThrow();
+		} catch (IllegalStateException error) {
+			RetrogenMod.LOGGER.error("Cannot persist cleared state for pass {} in {} chunk {}", pass.id, dimension, ChunkPos.unpack(key), error);
+			return CommandResult.PERSISTENCE_FAILED;
+		}
 		if (config.enabled && pass.enabled && pass.matchesDimension(dimension)) {
+			if (level.getChunkSource().getChunkNow(ChunkPos.getX(key), ChunkPos.getZ(key)) == null) {
+				return CommandResult.CLEARED_WAITING_FOR_CHUNK_LOAD;
+			}
 			QUEUES.computeIfAbsent(dimension, ignored -> new WorkQueue()).offer(key);
 			return CommandResult.CLEARED_AND_QUEUED;
 		}
@@ -284,6 +305,9 @@ public final class RetrogenRuntime {
 		UNKNOWN_PASS,
 		PASS_INACTIVE,
 		ALREADY_COMPLETE,
-		NOTHING_TO_CLEAR
+		NOTHING_TO_CLEAR,
+		WAITING_FOR_CHUNK_LOAD,
+		CLEARED_WAITING_FOR_CHUNK_LOAD,
+		PERSISTENCE_FAILED
 	}
 }

@@ -142,10 +142,13 @@ public final class RetrogenCommands {
 			case MOD_DISABLED -> success(source, "Cleared retry block, but Retrogen is disabled: " + target);
 			case NOT_READY -> failure(source, "Retrogen server state is not ready.");
 			case UNKNOWN_PASS -> failure(source, "Unknown Retrogen pass: " + pass);
-			case PASS_INACTIVE -> failure(source, "Pass is disabled or does not match this dimension: " + pass);
-			case ALREADY_COMPLETE -> failure(source, "Pass is already complete; use the confirmed clear command to reset it.");
-			case NOTHING_TO_CLEAR -> failure(source, "No Retrogen state exists for " + target);
-		};
+				case PASS_INACTIVE -> failure(source, "Pass is disabled or does not match this dimension: " + pass);
+				case ALREADY_COMPLETE -> failure(source, "Pass is already complete; use the confirmed clear command to reset it.");
+				case NOTHING_TO_CLEAR -> failure(source, "No Retrogen state exists for " + target);
+				case WAITING_FOR_CHUNK_LOAD -> success(source, "Cleared retry block; Retrogen will run when the chunk is next loaded: " + target);
+				case CLEARED_WAITING_FOR_CHUNK_LOAD -> success(source, "Cleared state; Retrogen will run when the chunk is next loaded: " + target);
+				case PERSISTENCE_FAILED -> failure(source, "Could not persist Retrogen state; no generation was queued.");
+			};
 	}
 
 	private static int success(CommandSourceStack source, String message) {

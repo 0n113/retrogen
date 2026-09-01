@@ -26,12 +26,12 @@ after interrupted passes.
 ./gradlew clean build
 ```
 
-The mod JAR is written to `build/libs/retrogen-1.1.0.jar`.
+The mod JAR is written to `build/libs/retrogen-1.1.1.jar`.
 
 ## Installation
 
 1. Install Fabric Loader and Fabric API for Minecraft 26.2.
-2. Copy `retrogen-1.1.0.jar` into the server's `mods` directory.
+2. Copy `retrogen-1.1.1.jar` into the server's `mods` directory.
 3. Start the server once to create `config/retrogen.json`.
 4. Stop the server, configure exact placed-feature identifiers, and make a world
    backup.
@@ -70,7 +70,9 @@ Back up the world, replace the example feature namespace, then set `enabled` to
 
 Patterns may be exact identifiers, namespace wildcards such as `examplemod:*`,
 or the global wildcard `*`. Prefer exact identifiers. A changed feature set
-must use a new pass ID; pass IDs are the migration/version boundary.
+must use a new pass ID; pass IDs are the migration/version boundary. Pass IDs
+must be unique, and startup fails safely if duplicate or null pass entries are
+found.
 
 ## State format
 
@@ -105,14 +107,18 @@ rename where supported.
 - `inProgress` is flushed before world mutation. If the server stops mid-pass,
   the marker blocks an automatic retry because the chunk may be partly changed.
   Inspect a backup and remove that one marker only if a retry is intentional.
+- If that pre-mutation write fails, Retrogen aborts the pass without changing
+  the world and records an error instead of running untracked.
 - Newly generated chunks are marked complete by the population hook when
   `markNewChunksComplete` is true.
 - Do not delete the state file while any pass remains enabled.
 
 ## Execution model
 
-The Fabric chunk-load event only enqueues work. At the end of a server-world
-tick, the runtime processes at most `chunksPerTick` entries. With
+Configuration and state are loaded before server worlds, allowing the Fabric
+chunk-load event to observe spawn and persistent force-loaded chunks during
+startup. The load event only enqueues work. At the end of a server-world tick,
+the runtime processes at most `chunksPerTick` entries. With
 `requireLoaded3x3`, all nine chunks needed by vanilla decoration must already be
 loaded; Retrogen never loads or generates neighbors merely to satisfy a pass.
 
@@ -139,10 +145,13 @@ tab completion.
   argument it prints one line for every configured pass.
 - `retry` removes only `failed` and crash-left `inProgress` markers, then queues
   the chunk. With no coordinates, the command source's current chunk is used.
-  A completed pass is not reset by this command.
+  A completed pass is not reset by this command. If an explicitly addressed
+  chunk is not loaded, it remains pending and runs when that chunk is next
+  loaded.
 - `clear` removes every ledger entry for exactly one pass and chunk, including
   `completed`. The final `confirm` literal is mandatory. If the pass is active
-  in the current dimension, the reset chunk is queued immediately.
+  in the current dimension, a loaded chunk is queued immediately; an unloaded
+  chunk runs on its next load.
 
 Chunk coordinates are chunk coordinates, not block coordinates. For example,
 block position `160, -32` is chunk `10, -2`.
@@ -154,3 +163,8 @@ in a chunk. The pass ledger prevents Retrogen from running the same migration
 twice, but the first pass can still overlap old blocks or player builds
 according to the selected feature's own placement rules. Always test a copied
 world and use `dryRun` before enabling writes.
+
+The JSON ledger is intentionally human-readable but is rewritten atomically.
+Very large migrations can therefore cause increasing save latency as the
+completed set grows. Roll out large worlds in measured batches and monitor tick
+time and ledger size.

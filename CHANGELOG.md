@@ -2,6 +2,29 @@
 
 All notable changes to Retrogen are documented in this file.
 
+## 1.1.1 - 2026-09-01
+
+### Fixed
+
+- Load configuration and state during `SERVER_STARTING` so spawn and persistent
+  force-loaded chunks are visible to the chunk-load hook.
+- Abort a generation pass when its pre-mutation in-progress marker cannot be
+  persisted.
+- Reject duplicate and null migration-pass entries during config validation.
+- Report unloaded retry/clear targets as waiting for the next chunk load instead
+  of claiming they were added to the in-memory queue.
+- Remove conflicting failed or in-progress markers even when a completed chunk
+  was already present in the in-memory index.
+- Do not swallow JVM-level `Error` conditions raised during world generation.
+
+### Changed
+
+- Pin Fabric Loom to 1.17.20 and restrict mod metadata to exactly Minecraft
+  26.2.
+- Use a primitive long set for the in-memory completion index.
+- Expand the automated suite to 12 tests, including failed persistence,
+  duplicate pass IDs, null passes, and conflicting ledger markers.
+
 ## 1.1.0 - 2026-09-01
 
 ### Added

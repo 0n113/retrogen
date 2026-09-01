@@ -14,6 +14,6 @@ public final class RetrogenMod implements ModInitializer {
 	public void onInitialize() {
 		RetrogenRuntime.registerEvents();
 		RetrogenCommands.register();
-		LOGGER.info("Retrogen initialized; configuration is loaded when the server starts");
+		LOGGER.info("Retrogen initialized; configuration is loaded before server worlds");
 	}
 }

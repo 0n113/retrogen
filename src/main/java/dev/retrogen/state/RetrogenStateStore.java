@@ -3,6 +3,7 @@ package dev.retrogen.state;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.retrogen.RetrogenMod;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -13,7 +14,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -105,10 +105,14 @@ public final class RetrogenStateStore {
 
 	public synchronized void markComplete(String dimension, String pass, long chunk) {
 		PassState passState = pass(dimension, pass);
-		if (passState.completedIndex.add(chunk)) {
-			passState.completed.add(ChunkKey.fromLong(chunk).toString());
-			passState.failed.remove(ChunkKey.fromLong(chunk).toString());
-			passState.inProgress.remove(ChunkKey.fromLong(chunk).toString());
+		String key = ChunkKey.fromLong(chunk).toString();
+		boolean changed = passState.completedIndex.add(chunk);
+		if (changed) {
+			passState.completed.add(key);
+		}
+		changed |= passState.failed.remove(key) != null;
+		changed |= passState.inProgress.remove(key) != null;
+		if (changed) {
 			passState.lastUpdated = Instant.now().toString();
 			dirty = true;
 		}
@@ -124,6 +128,14 @@ public final class RetrogenStateStore {
 	}
 
 	public synchronized void saveIfDirty() {
+		try {
+			saveIfDirtyOrThrow();
+		} catch (IllegalStateException e) {
+			RetrogenMod.LOGGER.error(e.getMessage(), e);
+		}
+	}
+
+	public synchronized void saveIfDirtyOrThrow() {
 		if (!dirty) {
 			return;
 		}
@@ -145,7 +157,7 @@ public final class RetrogenStateStore {
 			}
 			dirty = false;
 		} catch (IOException e) {
-			RetrogenMod.LOGGER.error("Could not persist Retrogen state to {}", path, e);
+			throw new IllegalStateException("Could not persist Retrogen state to " + path, e);
 		}
 	}
 
@@ -173,7 +185,7 @@ public final class RetrogenStateStore {
 				if (pass.inProgress == null) {
 					pass.inProgress = new HashMap<>();
 				}
-				pass.completedIndex = new HashSet<>();
+					pass.completedIndex = new LongOpenHashSet();
 				for (String key : pass.completed) {
 					pass.completedIndex.add(ChunkKey.parse(key).asLong());
 				}
@@ -195,6 +207,6 @@ public final class RetrogenStateStore {
 		Map<String, String> failed = new HashMap<>();
 		Map<String, String> inProgress = new HashMap<>();
 		String lastUpdated;
-		transient Set<Long> completedIndex = new HashSet<>();
+		transient LongOpenHashSet completedIndex = new LongOpenHashSet();
 	}
 }

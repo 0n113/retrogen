@@ -51,4 +51,16 @@ class RetrogenConfigTest {
 		assertFalse(pass.allowsFeature("examplemod:unsafe_ore"));
 		assertFalse(pass.allowsFeature("minecraft:ore_diamond"));
 	}
+
+	@Test
+	void validateRejectsDuplicateAndNullPassEntries() {
+		RetrogenConfig config = new RetrogenConfig();
+		RetrogenConfig.Pass duplicate = new RetrogenConfig.Pass();
+		config.passes.add(duplicate);
+		assertThrows(IllegalArgumentException.class, config::validate);
+
+		config.passes = new ArrayList<>();
+		config.passes.add(null);
+		assertThrows(IllegalArgumentException.class, config::validate);
+	}
 }

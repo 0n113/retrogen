@@ -4,9 +4,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
+import java.nio.file.Files;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RetrogenStateStoreTest {
@@ -65,5 +67,42 @@ class RetrogenStateStoreTest {
 		assertEquals(1, reloaded.summary(DIMENSION, PASS).inProgress());
 		assertTrue(reloaded.clearBlocked(DIMENSION, PASS, CHUNK));
 		assertFalse(reloaded.isInProgress(DIMENSION, PASS, CHUNK));
+	}
+
+	@Test
+	void strictSaveFailsClosedWhenStateDirectoryCannotBeCreated(@TempDir Path world) throws Exception {
+		RetrogenStateStore store = RetrogenStateStore.load(world);
+		Files.writeString(world.resolve("retrogen"), "not a directory");
+		store.markInProgress(DIMENSION, PASS, CHUNK);
+
+		assertThrows(IllegalStateException.class, store::saveIfDirtyOrThrow);
+		assertTrue(store.isInProgress(DIMENSION, PASS, CHUNK));
+	}
+
+	@Test
+	void completingAnAlreadyIndexedChunkRemovesConflictingMarkers(@TempDir Path world) throws Exception {
+		Path directory = world.resolve("retrogen");
+		Files.createDirectories(directory);
+		Files.writeString(directory.resolve("retrogen-state-v1.json"), """
+			{
+			  "schemaVersion": 1,
+			  "dimensions": {
+			    "minecraft:overworld": {
+			      "passes": {
+			        "ores_v1": {
+			          "completed": ["-4,12"],
+			          "failed": {"-4,12": "synthetic"},
+			          "inProgress": {"-4,12": "2026-09-01T00:00:00Z"}
+			        }
+			      }
+			    }
+			  }
+			}
+			""");
+
+		RetrogenStateStore store = RetrogenStateStore.load(world);
+		store.markComplete(DIMENSION, PASS, CHUNK);
+
+		assertEquals(new PassSummary(1, 0, 0), store.summary(DIMENSION, PASS));
 	}
 }

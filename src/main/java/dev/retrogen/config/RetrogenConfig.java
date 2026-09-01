@@ -1,7 +1,9 @@
 package dev.retrogen.config;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class RetrogenConfig {
 	public int schemaVersion = 1;
@@ -21,8 +23,15 @@ public final class RetrogenConfig {
 		if (passes == null) {
 			passes = new ArrayList<>();
 		}
+		Set<String> passIds = new HashSet<>();
 		for (Pass pass : passes) {
+			if (pass == null) {
+				throw new IllegalArgumentException("Pass entries must not be null");
+			}
 			pass.validate();
+			if (!passIds.add(pass.id)) {
+				throw new IllegalArgumentException("Duplicate pass id: " + pass.id);
+			}
 		}
 	}
 
